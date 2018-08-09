@@ -4,7 +4,7 @@
 #include <string.h>
 #include <errno.h>
 
-#include "readers.h"
+#include "../readers.h"
 
 /* ---------------------------------------------------------------------- */
 /* load                                                                   */

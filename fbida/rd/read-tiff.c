@@ -5,7 +5,7 @@
 #include <inttypes.h>
 #include <tiffio.h>
 
-#include "readers.h"
+#include "../readers.h"
 
 struct tiff_state {
     TIFF*          tif;

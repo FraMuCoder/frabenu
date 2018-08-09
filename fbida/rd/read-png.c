@@ -5,7 +5,7 @@
 #include <errno.h>
 #include <png.h>
 
-#include "readers.h"
+#include "../readers.h"
 
 static const char *ct[] = {
     "gray",  "X1", "rgb",  "palette",
@@ -134,7 +134,7 @@ png_read(unsigned char *dst, unsigned int line, void *data)
     default:
 	/* shouldn't happen */
 	fprintf(stderr,"Oops: %s:%d\n",__FILE__,__LINE__);
-	exit(1);
+    exit(-1);
     }
 }
 

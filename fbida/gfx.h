@@ -1,7 +1,10 @@
+#ifndef _GFX_H_
+#define _GFX_H_
+
 #include <stdbool.h>
 #include <inttypes.h>
 
-#include <epoxy/egl.h>
+//#include <epoxy/egl.h>
 
 typedef struct gfxstate gfxstate;
 
@@ -17,13 +20,15 @@ struct gfxstate {
     uint32_t rlen, glen, blen, tlen;
     uint32_t roff, goff, boff, toff;
 
-    /* egl */
-    EGLDisplay dpy;
-    EGLContext ctx;
-    EGLSurface surface;
+//    /* egl */
+//    EGLDisplay dpy;
+//    EGLContext ctx;
+//    EGLSurface surface;
 
     /* calls */
     void (*restore_display)(void);
     void (*cleanup_display)(void);
     void (*flush_display)(bool second);
 };
+
+#endif // _GFX_H_

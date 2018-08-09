@@ -4,7 +4,7 @@
 #include <string.h>
 #include <gif_lib.h>
 
-#include "readers.h"
+#include "../readers.h"
 
 #if defined(GIFLIB_MAJOR) && (GIFLIB_MAJOR >= 5)
 #define GIF5DATA(e)		e

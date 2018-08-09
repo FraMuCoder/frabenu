@@ -1,4 +1,5 @@
 #include <pixman.h>
+#include <stdio.h>
 #include "list.h"
 
 enum ida_extype {
@@ -30,10 +31,10 @@ struct ida_image {
     struct ida_image_info  i;
     pixman_image_t         *p;
 };
-struct ida_rect {
-    int x1,y1,x2,y2;
-};
-
+//struct ida_rect {
+//    int x1,y1,x2,y2;
+//};
+//
 /* load image files */
 struct ida_loader {
     char  *magic;
@@ -41,27 +42,27 @@ struct ida_loader {
     int   mlen;
     char  *name;
     void* (*init)(FILE *fp, char *filename, unsigned int page,
-		  struct ida_image_info *i, int thumbnail);
+          struct ida_image_info *i, int thumbnail);
     void  (*read)(unsigned char *dst, unsigned int line, void *data);
     void  (*done)(void *data);
     struct list_head list;
 };
 
-/* filter + operations */
-struct ida_op {
-    char  *name;
-    void* (*init)(struct ida_image *src, struct ida_rect *rect,
-		  struct ida_image_info *i, void *parm);
-    void  (*work)(struct ida_image *src, struct ida_rect *rect,
-		  unsigned char *dst, int line,
-		  void *data);
-    void  (*done)(void *data);
-};
-
-void* op_none_init(struct ida_image *src, struct ida_rect *rect,
-		   struct ida_image_info *i, void *parm);
-void  op_none_done(void *data);
-void  op_free_done(void *data);
+///* filter + operations */
+//struct ida_op {
+//    char  *name;
+//    void* (*init)(struct ida_image *src, struct ida_rect *rect,
+//		  struct ida_image_info *i, void *parm);
+//    void  (*work)(struct ida_image *src, struct ida_rect *rect,
+//		  unsigned char *dst, int line,
+//		  void *data);
+//    void  (*done)(void *data);
+//};
+//
+//void* op_none_init(struct ida_image *src, struct ida_rect *rect,
+//		   struct ida_image_info *i, void *parm);
+//void  op_none_done(void *data);
+//void  op_free_done(void *data);
 
 /* ----------------------------------------------------------------------- */
 /* resolution                                                              */
@@ -73,24 +74,24 @@ void  op_free_done(void *data);
 /* ----------------------------------------------------------------------- */
 
 /* helpers */
-void load_bits_lsb(unsigned char *dst, unsigned char *src, int width,
-		   int on, int off);
+//void load_bits_lsb(unsigned char *dst, unsigned char *src, int width,
+//		   int on, int off);
 void load_bits_msb(unsigned char *dst, unsigned char *src, int width,
-		   int on, int off);
+           int on, int off);
 void load_gray(unsigned char *dst, unsigned char *src, int width);
 void load_graya(unsigned char *dst, unsigned char *src, int width);
 void load_rgba(unsigned char *dst, unsigned char *src, int width);
 
 int load_add_extra(struct ida_image_info *info, enum ida_extype type,
 		   unsigned char *data, unsigned int size);
-struct ida_extra* load_find_extra(struct ida_image_info *info,
-				  enum ida_extype type);
-int load_free_extras(struct ida_image_info *info);
+//struct ida_extra* load_find_extra(struct ida_image_info *info,
+//				  enum ida_extype type);
+//int load_free_extras(struct ida_image_info *info);
 
 void ida_image_alloc(struct ida_image *img);
 uint8_t *ida_image_scanline(struct ida_image *img, int y);
-uint32_t ida_image_stride(struct ida_image *img);
-uint32_t ida_image_bpp(struct ida_image *img);
+//uint32_t ida_image_stride(struct ida_image *img);
+//uint32_t ida_image_bpp(struct ida_image *img);
 void ida_image_free(struct ida_image *img);
 
 /* ----------------------------------------------------------------------- */
@@ -102,10 +103,11 @@ extern struct ida_loader jpeg_loader;
 extern struct ida_loader sane_loader;
 extern struct ida_writer ps_writer;
 extern struct ida_writer jpeg_writer;
-
+//
 /* lists */
 #define __init __attribute__ ((constructor))
 #define __fini __attribute__ ((destructor))
 
 extern struct list_head loaders;
 void load_register(struct ida_loader *loader);
+

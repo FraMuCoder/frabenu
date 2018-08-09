@@ -8,8 +8,8 @@
 
 #include <libexif/exif-data.h>
 
-#include "readers.h"
-#include "misc.h"
+#include "../readers.h"
+#include "../misc.h"
 
 /* ---------------------------------------------------------------------- */
 /* load                                                                   */
@@ -42,7 +42,7 @@ static void thumbnail_src_init(struct jpeg_decompress_struct *cinfo)
 static int thumbnail_src_fill(struct jpeg_decompress_struct *cinfo)
 {
     fprintf(stderr,"jpeg: panic: no more thumbnail input data\n");
-    exit(1);
+    exit(-1);
 }
 
 static void thumbnail_src_skip(struct jpeg_decompress_struct *cinfo,
@@ -74,7 +74,7 @@ static void jerror_exit(j_common_ptr info)
     cinfo->err->output_message(info);
     longjmp(h->errjump, 1);
     jpeg_destroy_decompress(cinfo);
-    exit(1);
+    exit(-1);
 }
 
 static void*

@@ -153,7 +153,7 @@ void console_set_vt(int vtno)
     if (vtno < 0) {
 	if (-1 == ioctl(STDIN_FILENO, VT_OPENQRY, &vtno) || vtno == -1) {
 	    perror("ioctl VT_OPENQRY");
-	    exit(1);
+        exit(-1);
 	}
     }
 
@@ -162,7 +162,7 @@ void console_set_vt(int vtno)
     chown(vtname, getuid(), getgid());
     if (-1 == access(vtname, R_OK | W_OK)) {
 	fprintf(stderr,"access %s: %s\n",vtname,strerror(errno));
-	exit(1);
+    exit(-1);
     }
 
     /* switch controlling tty */
@@ -171,7 +171,7 @@ void console_set_vt(int vtno)
 	break;
     case -1:
 	perror("fork");
-	exit(1);
+    exit(-1);
     default:
 	exit(0);
     }
@@ -185,16 +185,16 @@ void console_set_vt(int vtno)
 
     if (-1 == ioctl(STDIN_FILENO,VT_GETSTATE, &vts)) {
 	perror("ioctl VT_GETSTATE");
-	exit(1);
+    exit(-1);
     }
     orig_vt_no = vts.v_active;
     if (-1 == ioctl(STDIN_FILENO,VT_ACTIVATE, vtno)) {
 	perror("ioctl VT_ACTIVATE");
-	exit(1);
+    exit(-1);
     }
     if (-1 == ioctl(STDIN_FILENO,VT_WAITACTIVE, vtno)) {
 	perror("ioctl VT_WAITACTIVE");
-	exit(1);
+    exit(-1);
     }
 }
 

@@ -5,28 +5,28 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stddef.h>
+//#include <stddef.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <termios.h>
-#include <signal.h>
+//#include <signal.h>
 #include <errno.h>
-#include <setjmp.h>
+//#include <setjmp.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
-#include <sys/wait.h>
-#include <sys/stat.h>
+//#include <sys/wait.h>
+//#include <sys/stat.h>
 
-#include <linux/kd.h>
-#include <linux/vt.h>
+//#include <linux/kd.h>
+//#include <linux/vt.h>
 #include <linux/fb.h>
 
 #include "vt.h"
 #include "fbtools.h"
 
-/* -------------------------------------------------------------------- */
-/* internal variables                                                   */
+///* -------------------------------------------------------------------- */
+///* internal variables                                                   */
 
 static struct fb_fix_screeninfo  fb_fix;
 static struct fb_var_screeninfo  fb_var;
@@ -67,13 +67,13 @@ static void fb_linear_palette(int r, int g, int b)
     for (i = 0; i < size; i++)
         p_green[i] = color_scale(i,size);
     if (p_cmap.len < size)
-	p_cmap.len = size;
+    p_cmap.len = size;
 
     size = 256 >> (8 - b);
     for (i = 0; i < size; i++)
-	p_blue[i] = color_scale(i,size);
+    p_blue[i] = color_scale(i,size);
     if (p_cmap.len < size)
-	p_cmap.len = size;
+    p_cmap.len = size;
 }
 
 static void fb_dither_palette(int r, int g, int b)
@@ -84,9 +84,9 @@ static void fb_dither_palette(int r, int g, int b)
     gs = 256 / (g - 1);
     bs = 256 / (b - 1);
     for (i = 0; i < 256; i++) {
-	p_red[i]   = color_scale(rs * ((i / (g * b)) % r), 255);
-	p_green[i] = color_scale(gs * ((i / b) % g),       255);
-	p_blue[i]  = color_scale(bs * ((i) % b),           255);
+    p_red[i]   = color_scale(rs * ((i / (g * b)) % r), 255);
+    p_green[i] = color_scale(gs * ((i / b) % g),       255);
+    p_blue[i]  = color_scale(bs * ((i) % b),           255);
     }
     p_cmap.len = 256;
 }
@@ -94,10 +94,10 @@ static void fb_dither_palette(int r, int g, int b)
 static void fb_set_palette(void)
 {
     if (fb_fix.visual != FB_VISUAL_DIRECTCOLOR && fb_var.bits_per_pixel != 8)
-	return;
+    return;
     if (-1 == ioctl(fb,FBIOPUTCMAP,&p_cmap)) {
-	perror("ioctl FBIOPUTCMAP");
-	exit(1);
+    perror("ioctl FBIOPUTCMAP");
+    exit(-1);
     }
 }
 
@@ -114,7 +114,7 @@ fb_memset (void *addr, int c, size_t len)
     i |= i << 16;
     len >>= 2;
     for (p = addr; len--; p++)
-	*p = i;
+    *p = i;
 #else
     memset(addr, c, len);
 #endif
@@ -129,67 +129,67 @@ fb_setmode(char *name)
 
     /* load current values */
     if (-1 == ioctl(fb,FBIOGET_VSCREENINFO,&fb_var)) {
-	perror("ioctl FBIOGET_VSCREENINFO");
-	exit(1);
+    perror("ioctl FBIOGET_VSCREENINFO");
+    exit(-1);
     }
 
     if (NULL == name)
-	return -1;
+    return -1;
     if (NULL == (fp = fopen("/etc/fb.modes","r")))
-	return -1;
+    return -1;
     while (NULL != fgets(line,79,fp)) {
-	if (1 == sscanf(line, "mode \"%31[^\"]\"",label) &&
-	    0 == strcmp(label,name)) {
-	    /* fill in new values */
-	    fb_var.sync  = 0;
-	    fb_var.vmode = 0;
-	    while (NULL != fgets(line,79,fp) &&
-		   NULL == strstr(line,"endmode")) {
-		if (5 == sscanf(line," geometry %d %d %d %d %d",
-				&fb_var.xres,&fb_var.yres,
-				&fb_var.xres_virtual,&fb_var.yres_virtual,
-				&fb_var.bits_per_pixel))
-		    geometry = 1;
-		if (7 == sscanf(line," timings %d %d %d %d %d %d %d",
-				&fb_var.pixclock,
-				&fb_var.left_margin,  &fb_var.right_margin,
-				&fb_var.upper_margin, &fb_var.lower_margin,
-				&fb_var.hsync_len,    &fb_var.vsync_len))
-		    timings = 1;
-		if (1 == sscanf(line, " hsync %15s",value) &&
-		    0 == strcasecmp(value,"high"))
-		    fb_var.sync |= FB_SYNC_HOR_HIGH_ACT;
-		if (1 == sscanf(line, " vsync %15s",value) &&
-		    0 == strcasecmp(value,"high"))
-		    fb_var.sync |= FB_SYNC_VERT_HIGH_ACT;
-		if (1 == sscanf(line, " csync %15s",value) &&
-		    0 == strcasecmp(value,"high"))
-		    fb_var.sync |= FB_SYNC_COMP_HIGH_ACT;
-		if (1 == sscanf(line, " extsync %15s",value) &&
-		    0 == strcasecmp(value,"true"))
-		    fb_var.sync |= FB_SYNC_EXT;
-		if (1 == sscanf(line, " laced %15s",value) &&
-		    0 == strcasecmp(value,"true"))
-		    fb_var.vmode |= FB_VMODE_INTERLACED;
-		if (1 == sscanf(line, " double %15s",value) &&
-		    0 == strcasecmp(value,"true"))
-		    fb_var.vmode |= FB_VMODE_DOUBLE;
-	    }
-	    /* ok ? */
-	    if (!geometry || !timings)
-		return -1;
-	    /* set */
-	    fb_var.xoffset = 0;
-	    fb_var.yoffset = 0;
-	    if (-1 == ioctl(fb,FBIOPUT_VSCREENINFO,&fb_var))
-		perror("ioctl FBIOPUT_VSCREENINFO");
-	    /* look what we have now ... */
-	    if (-1 == ioctl(fb,FBIOGET_VSCREENINFO,&fb_var)) {
-		perror("ioctl FBIOGET_VSCREENINFO");
-		exit(1);
-	    }
-	    return 0;
-	}
+    if (1 == sscanf(line, "mode \"%31[^\"]\"",label) &&
+        0 == strcmp(label,name)) {
+        /* fill in new values */
+        fb_var.sync  = 0;
+        fb_var.vmode = 0;
+        while (NULL != fgets(line,79,fp) &&
+           NULL == strstr(line,"endmode")) {
+        if (5 == sscanf(line," geometry %d %d %d %d %d",
+                &fb_var.xres,&fb_var.yres,
+                &fb_var.xres_virtual,&fb_var.yres_virtual,
+                &fb_var.bits_per_pixel))
+            geometry = 1;
+        if (7 == sscanf(line," timings %d %d %d %d %d %d %d",
+                &fb_var.pixclock,
+                &fb_var.left_margin,  &fb_var.right_margin,
+                &fb_var.upper_margin, &fb_var.lower_margin,
+                &fb_var.hsync_len,    &fb_var.vsync_len))
+            timings = 1;
+        if (1 == sscanf(line, " hsync %15s",value) &&
+            0 == strcasecmp(value,"high"))
+            fb_var.sync |= FB_SYNC_HOR_HIGH_ACT;
+        if (1 == sscanf(line, " vsync %15s",value) &&
+            0 == strcasecmp(value,"high"))
+            fb_var.sync |= FB_SYNC_VERT_HIGH_ACT;
+        if (1 == sscanf(line, " csync %15s",value) &&
+            0 == strcasecmp(value,"high"))
+            fb_var.sync |= FB_SYNC_COMP_HIGH_ACT;
+        if (1 == sscanf(line, " extsync %15s",value) &&
+            0 == strcasecmp(value,"true"))
+            fb_var.sync |= FB_SYNC_EXT;
+        if (1 == sscanf(line, " laced %15s",value) &&
+            0 == strcasecmp(value,"true"))
+            fb_var.vmode |= FB_VMODE_INTERLACED;
+        if (1 == sscanf(line, " double %15s",value) &&
+            0 == strcasecmp(value,"true"))
+            fb_var.vmode |= FB_VMODE_DOUBLE;
+        }
+        /* ok ? */
+        if (!geometry || !timings)
+        return -1;
+        /* set */
+        fb_var.xoffset = 0;
+        fb_var.yoffset = 0;
+        if (-1 == ioctl(fb,FBIOPUT_VSCREENINFO,&fb_var))
+        perror("ioctl FBIOPUT_VSCREENINFO");
+        /* look what we have now ... */
+        if (-1 == ioctl(fb,FBIOGET_VSCREENINFO,&fb_var)) {
+        perror("ioctl FBIOGET_VSCREENINFO");
+        exit(-1);
+        }
+        return 0;
+    }
     }
     fclose(fp);
     return -1;
@@ -205,13 +205,13 @@ static void fb_cleanup_display(void)
 {
     /* restore console */
     if (-1 == ioctl(fb, FBIOPUT_VSCREENINFO, &fb_ovar))
-	perror("ioctl FBIOPUT_VSCREENINFO");
+    perror("ioctl FBIOPUT_VSCREENINFO");
     if (-1 == ioctl(fb, FBIOGET_FSCREENINFO, &fb_fix))
-	perror("ioctl FBIOGET_FSCREENINFO");
+    perror("ioctl FBIOGET_FSCREENINFO");
     if (fb_ovar.bits_per_pixel == 8 ||
-	fb_fix.visual == FB_VISUAL_DIRECTCOLOR) {
-	if (-1 == ioctl(fb, FBIOPUTCMAP, &ocmap))
-	    perror("ioctl FBIOPUTCMAP");
+    fb_fix.visual == FB_VISUAL_DIRECTCOLOR) {
+    if (-1 == ioctl(fb, FBIOPUTCMAP, &ocmap))
+        perror("ioctl FBIOPUTCMAP");
     }
     close(fb);
 
@@ -240,21 +240,21 @@ gfxstate* fb_init(char *device, char *mode, int vt)
     /* get current settings (which we have to restore) */
     if (-1 == (fb = open(device,O_RDWR /* O_WRONLY */))) {
 	fprintf(stderr,"open %s: %s\n",device,strerror(errno));
-	exit(1);
+    exit(-1);
     }
     if (-1 == ioctl(fb,FBIOGET_VSCREENINFO,&fb_ovar)) {
 	perror("ioctl FBIOGET_VSCREENINFO");
-	exit(1);
+    exit(-1);
     }
     if (-1 == ioctl(fb,FBIOGET_FSCREENINFO,&fb_fix)) {
 	perror("ioctl FBIOGET_FSCREENINFO");
-	exit(1);
+    exit(-1);
     }
     if (fb_ovar.bits_per_pixel == 8 ||
 	fb_fix.visual == FB_VISUAL_DIRECTCOLOR) {
 	if (-1 == ioctl(fb,FBIOGETCMAP,&ocmap)) {
 	    perror("ioctl FBIOGETCMAP");
-	    exit(1);
+        exit(-1);
 	}
     }
     tcgetattr(STDIN_FILENO, &term);
@@ -265,7 +265,7 @@ gfxstate* fb_init(char *device, char *mode, int vt)
     /* checks & initialisation */
     if (-1 == ioctl(fb,FBIOGET_FSCREENINFO,&fb_fix)) {
 	perror("ioctl FBIOGET_FSCREENINFO");
-	exit(1);
+    exit(-1);
     }
     if (fb_fix.type != FB_TYPE_PACKED_PIXELS) {
 	fprintf(stderr,"can handle only packed pixel frame buffers\n");
@@ -338,5 +338,5 @@ gfxstate* fb_init(char *device, char *mode, int vt)
 
  err:
     fb_cleanup_display();
-    exit(1);
+    exit(-1);
 }
