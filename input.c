@@ -42,7 +42,7 @@ static int lastFdNr = -1;
 input_event input_get(void)
 {
     input_event event = input_none;
-    struct pollfd fds[INPUT_JOY_MAX + INPUT_KBD_MAX];
+    struct pollfd fds[INPUT_JOY_MAXFD + INPUT_KBD_MAX];
     const int nfds = sizeof(fds) / sizeof(fds[0]);
     int timeout = -1; // ms
     int retval;
@@ -50,7 +50,7 @@ input_event input_get(void)
 
     memset(fds, 0, sizeof(fds));
 
-    for (i = 0; i < INPUT_JOY_MAX; ++i)
+    for (i = 0; i < INPUT_JOY_MAXFD; ++i)
     {
         fds[i].fd = joy_getFd(i);
         fds[i].events = POLLIN;
@@ -58,8 +58,8 @@ input_event input_get(void)
 
     for (i = 0; i < INPUT_KBD_MAX; ++i)
     {
-        fds[INPUT_JOY_MAX+i].fd = kbd_getFd(i);
-        fds[INPUT_JOY_MAX+i].events = POLLIN;
+        fds[INPUT_JOY_MAXFD+i].fd = kbd_getFd(i);
+        fds[INPUT_JOY_MAXFD+i].events = POLLIN;
     }
 
     timeout = getMinTimeout(timeout, kbd_getTaskTimeout());
@@ -81,13 +81,13 @@ input_event input_get(void)
             if (fdNr >= nfds) { fdNr -= nfds; }
             if (fds[fdNr].revents)
             {
-                if (fdNr < INPUT_JOY_MAX)
+                if (fdNr < INPUT_JOY_MAXFD)
                 {
                     event = joy_getEvent(fdNr);
                 }
                 else
                 {
-                    event = kbd_getEvent(fdNr - INPUT_JOY_MAX);
+                    event = kbd_getEvent(fdNr - INPUT_JOY_MAXFD);
                 }
                 lastFdNr = fdNr;
                 break; // hande only one event

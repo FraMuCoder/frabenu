@@ -17,14 +17,24 @@
 #include <linux/joystick.h>
 #include <stdint.h>
 #include <errno.h>
+#include <assert.h>
+
+#if FRABENU_JOYMONITORMODE == FRABENU_JOYMONITORMODE_NOTIFY
+    #include <sys/inotify.h>
+#endif
 
 #define PATH_MAX 255
 
 static int  init = 0;
-static int  taskCycle = 2000; // ms
-static struct timespec lastCycle;
 static int  devCnt = 0;
 static char devNames[INPUT_JOY_MAX][PATH_MAX];
+
+#if FRABENU_JOYMONITORMODE == FRABENU_JOYMONITORMODE_POLL
+    static int             taskCycle = 2000; // ms
+    static struct timespec lastCycle;
+#elif FRABENU_JOYMONITORMODE == FRABENU_JOYMONITORMODE_NOTIFY
+    static int notify_fd = -1;
+#endif
 
 #define NEG_2ND_THRESHOLD    -24576
 #define NEG_MID_VALLUE       -16384
@@ -86,6 +96,10 @@ static event_map joy_event_map = {NULL,
                                   NULL};
 
 static void joy_close(int devNr);
+static input_event getJoyEvent(int devNr);
+#if FRABENU_JOYMONITORMODE == FRABENU_JOYMONITORMODE_NOTIFY
+    static void handleNotifyEvent();
+#endif
 static input_event axes2Event(uint8_t axisId, int8_t state);
 
 
@@ -131,7 +145,25 @@ int joy_init()
             joys[devNr].fd = -1;
             memset(joys[devNr].axCurState, AX_INIT_STATE, sizeof(joys[devNr].axCurState));
         }
+#if FRABENU_JOYMONITORMODE == FRABENU_JOYMONITORMODE_NOTIFY
+        notify_fd = inotify_init();
 
+        if (notify_fd >= 0)
+        {
+            int wd;
+
+            wd = inotify_add_watch(notify_fd, "/dev/input", IN_ATTRIB | IN_CREATE);
+            if (wd < 0)
+            {
+                debugOut(debug_level0, "Err inotify_add_watch: %d\n", errno);
+            }
+            // TODO also watch /dev/input/by-id and /dev/input/by-path
+        }
+        else
+        {
+            debugOut(debug_level0, "Err inotify_init: %d\n", errno);
+        }
+#endif
         init = 1;
 
         joy_task();
@@ -198,12 +230,15 @@ void joy_task()
         }
     }
 
+#if FRABENU_JOYMONITORMODE == FRABENU_JOYMONITORMODE_POLL
     getCurClock(&lastCycle);
+#endif
 }
 
 
 int joy_getTaskTimeout()
 {
+#if FRABENU_JOYMONITORMODE == FRABENU_JOYMONITORMODE_POLL
     if (init)
     {
         int to = getTimeout(&lastCycle, taskCycle);
@@ -215,6 +250,7 @@ int joy_getTaskTimeout()
         return to;
     }
     else
+#endif
     {
         return -1;
     }
@@ -237,6 +273,8 @@ void joy_stop()
 
 static void joy_close(int devNr)
 {
+    assert(devNr < INPUT_JOY_MAX);
+
     if (init)
     {
         if (joys[devNr].fd >= 0)
@@ -259,7 +297,19 @@ int joy_getFd(int devNr)
 {
     if (init)
     {
-        return joys[devNr].fd;
+        if (devNr < INPUT_JOY_MAX)
+        {
+            return joys[devNr].fd;
+        }
+
+#if FRABENU_JOYMONITORMODE == FRABENU_JOYMONITORMODE_NOTIFY
+        if (devNr == INPUT_JOY_MAX)
+        {
+            return notify_fd;
+        }
+#endif
+
+        return -1;
     }
     else
     {
@@ -270,95 +320,130 @@ int joy_getFd(int devNr)
 
 input_event joy_getEvent(int devNr)
 {
-    if (init && (joys[devNr].fd >= 0))
+    if (init)
     {
-        struct js_event event;
-
-        ssize_t retval;
-
-        retval = read(joys[devNr].fd, &event, sizeof(event));
-
-        if (retval < 0)
+        if (devNr < INPUT_JOY_MAX)
         {
-            debugOut(debug_level0, "Error reading joy: %d\n", errno);
-            joy_close(devNr);
-        }
-        else if (retval == 0)
-        {
-            debugOut(debug_level0, "NoData from joy\n");
-            joy_close(devNr);
-        }
-        else if (retval == sizeof(event))
-        {
-            if (event.type == JS_EVENT_BUTTON)
+            if (joys[devNr].fd >= 0)
             {
-                debugOut(debug_level3, "Joy %d Btn Time:%x #:%d[%02x] data:%d\n",
-                    devNr, event.time, event.number, joys[devNr].btnMap[event.number], event.value);
-                if (event.value)
-                {
-                    return key2event(joy_event_map, joys[devNr].btnMap[event.number]);
-                }
-            }
-            else if (event.type == JS_EVENT_AXIS)
-            {
-                debugOut(debug_level3, "Joy %d Ax Time:%x #:%d[%02x] data:%d\n",
-                    devNr, event.time, event.number, joys[devNr].axMap[event.number], event.value);
-
-                if (   (joys[devNr].axCurState[event.number] >= -1)
-                    && (joys[devNr].axCurState[event.number] <= 1))
-                {
-                    int i = joys[devNr].axCurState[event.number] + 1;
-                    int8_t newState = joys[devNr].axCurState[event.number];
-
-                    if (event.value < THRESHOLDS[i][0])
-                    {
-                        --newState;
-                    }
-                    else if (event.value > THRESHOLDS[i][1])
-                    {
-                        ++newState;
-                    }
-                    if (newState != joys[devNr].axCurState[event.number])
-                    {
-                        joys[devNr].axCurState[event.number] = newState;
-                        debugOut(debug_level3, "NewState %d\n", newState);
-
-                        return axes2Event(joys[devNr].axMap[event.number], newState);
-                    }
-                }
-            }
-            else if ((JS_EVENT_INIT & event.type) == JS_EVENT_INIT)
-            {
-                if ((event.type & ~JS_EVENT_INIT) == JS_EVENT_AXIS)
-                {
-                    if (joys[devNr].axCurState[event.number] == AX_INIT_STATE)
-                    {
-                        joys[devNr].axCurVal[event.number] = event.value;
-                        if (event.value < NEG_MID_VALLUE)
-                        {
-                            joys[devNr].axCurState[event.number] = -1;
-                        }
-                        else if (event.value > POS_MID_VALLUE)
-                        {
-                            joys[devNr].axCurState[event.number] = 1;
-                        }
-                        else
-                        {
-                            joys[devNr].axCurState[event.number] = 0;
-                        }
-                    }
-                }
+                return getJoyEvent(devNr);
             }
         }
-        else
+
+#if FRABENU_JOYMONITORMODE == FRABENU_JOYMONITORMODE_NOTIFY
+        if (devNr == INPUT_JOY_MAX)
         {
-            debugOut(debug_level0, "Not enough data from joy\n");
-            joy_close(devNr);
+            handleNotifyEvent();
         }
+#endif
     }
 
     return input_none;
 }
+
+
+static input_event getJoyEvent(int devNr)
+{
+    struct js_event event;
+
+    ssize_t retval;
+
+    retval = read(joys[devNr].fd, &event, sizeof(event));
+
+    if (retval < 0)
+    {
+        debugOut(debug_level0, "Error reading joy: %d\n", errno);
+        joy_close(devNr);
+    }
+    else if (retval == 0)
+    {
+        debugOut(debug_level0, "NoData from joy\n");
+        joy_close(devNr);
+    }
+    else if (retval == sizeof(event))
+    {
+        if (event.type == JS_EVENT_BUTTON)
+        {
+            debugOut(debug_level3, "Joy %d Btn Time:%x #:%d[%02x] data:%d\n",
+                devNr, event.time, event.number, joys[devNr].btnMap[event.number], event.value);
+            if (event.value)
+            {
+                return key2event(joy_event_map, joys[devNr].btnMap[event.number]);
+            }
+        }
+        else if (event.type == JS_EVENT_AXIS)
+        {
+            debugOut(debug_level3, "Joy %d Ax Time:%x #:%d[%02x] data:%d\n",
+                devNr, event.time, event.number, joys[devNr].axMap[event.number], event.value);
+
+            if (   (joys[devNr].axCurState[event.number] >= -1)
+                && (joys[devNr].axCurState[event.number] <= 1))
+            {
+                int i = joys[devNr].axCurState[event.number] + 1;
+                int8_t newState = joys[devNr].axCurState[event.number];
+
+                if (event.value < THRESHOLDS[i][0])
+                {
+                    --newState;
+                }
+                else if (event.value > THRESHOLDS[i][1])
+                {
+                    ++newState;
+                }
+                if (newState != joys[devNr].axCurState[event.number])
+                {
+                    joys[devNr].axCurState[event.number] = newState;
+                    debugOut(debug_level3, "NewState %d\n", newState);
+
+                    return axes2Event(joys[devNr].axMap[event.number], newState);
+                }
+            }
+        }
+        else if ((JS_EVENT_INIT & event.type) == JS_EVENT_INIT)
+        {
+            if ((event.type & ~JS_EVENT_INIT) == JS_EVENT_AXIS)
+            {
+                if (joys[devNr].axCurState[event.number] == AX_INIT_STATE)
+                {
+                    joys[devNr].axCurVal[event.number] = event.value;
+                    if (event.value < NEG_MID_VALLUE)
+                    {
+                        joys[devNr].axCurState[event.number] = -1;
+                    }
+                    else if (event.value > POS_MID_VALLUE)
+                    {
+                        joys[devNr].axCurState[event.number] = 1;
+                    }
+                    else
+                    {
+                        joys[devNr].axCurState[event.number] = 0;
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        debugOut(debug_level0, "Not enough data from joy\n");
+        joy_close(devNr);
+    }
+
+    return input_none;
+}
+
+
+#if FRABENU_JOYMONITORMODE == FRABENU_JOYMONITORMODE_NOTIFY
+
+static void handleNotifyEvent()
+{
+    char buf[4096];
+
+    read(notify_fd, buf, sizeof(buf)); // read all data, to be able to poll again for notify_fd
+                                       // but we don't need the data it's just a trigger
+    joy_task();
+}
+
+#endif
 
 
 static input_event axes2Event(uint8_t axisId, int8_t state)

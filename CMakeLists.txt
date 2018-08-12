@@ -3,8 +3,15 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-cmake_minimum_required(VERSION 2.4)
+cmake_minimum_required(VERSION 3.0)
 project (frabenu)
+
+
+set(FRABENU_JOYMONITORMODE "NOTIFY" CACHE STRING "Monitor mode for joystick devices, POLL or NOTIFY")
+set_property(CACHE FRABENU_JOYMONITORMODE PROPERTY STRINGS POLL NOTIFY)
+
+add_definitions(-DFRABENU_JOYMONITORMODE_POLL=1 -DFRABENU_JOYMONITORMODE_NOTIFY=2 -DFRABENU_JOYMONITORMODE=FRABENU_JOYMONITORMODE_${FRABENU_JOYMONITORMODE})
+
 
 add_compile_options("-Wall")
 

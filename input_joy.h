@@ -12,6 +12,16 @@
 
 #define INPUT_JOY_MAX 10
 
+#ifndef FRABENU_JOYMONITORMODE
+    #error "FRABENU_JOYMONITORMODE not defined"
+#elif FRABENU_JOYMONITORMODE == FRABENU_JOYMONITORMODE_POLL
+    #define INPUT_JOY_MAXFD INPUT_JOY_MAX
+#elif FRABENU_JOYMONITORMODE == FRABENU_JOYMONITORMODE_NOTIFY
+    #define INPUT_JOY_MAXFD (INPUT_JOY_MAX + 1)
+#else
+    #error "unknown value for FRABENU_JOYMONITORMODE"
+#endif
+
 /**
  * @brief Add new joystick device for monitoring.
  *
@@ -57,7 +67,7 @@ void joy_stop();
 
 /**
  * @brief Get file descriptor for a device
- * @param devNr 0..(INPUT_JOY_MAX-1)
+ * @param devNr 0..(INPUT_JOY_MAXFD-1)
  * @return      >=0 for open device or -1 if device is closed.
  */
 int joy_getFd(int devNr);
@@ -66,7 +76,7 @@ int joy_getFd(int devNr);
  * @brief Read data from open device and return current input event.
  *
  * This may block if there are no data to read.
- * @param devNr 0..(INPUT_JOY_MAX-1)
+ * @param devNr 0..(INPUT_JOY_MAXFD-1)
  * @return      Current input event, may be input_none.
  */
 input_event joy_getEvent(int devNr);
