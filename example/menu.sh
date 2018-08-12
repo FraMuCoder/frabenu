@@ -3,6 +3,9 @@
 # use this stop fbi if it is used for splash screen
 #sudo killall fbi
 
+# shorter reaction for ESC
+export ESCDELAY=100
+
 # use this if you want to restart menu after any selection but abort ([ESC] or [Q])
 #while [ 1 ]
 #   do

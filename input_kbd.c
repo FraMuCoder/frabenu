@@ -12,6 +12,8 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <stdlib.h>
+#include <limits.h>
 
 typedef enum CSISeqState
 {
@@ -193,6 +195,7 @@ int kbd_init()
     if (!init)
     {
         int retval;
+        char *env;
 
         curCSISeqState = CSI_none;
         retval = pipe(kbdPipe);
@@ -200,6 +203,18 @@ int kbd_init()
         if(retval)
         {
             return -1;
+        }
+
+        env = getenv("ESCDELAY");
+        if (env != NULL)
+        {
+            long val;
+            char *next;
+            val = strtol(env, &next, 10);
+            if ((next != env) && (val > 0) && (val <= INT_MAX))
+            {
+                escTimeout = val;
+            }
         }
 
         init = 1;
