@@ -187,6 +187,17 @@ int menu_get(menu *m)
     return m->curY * m->xMax + m->curX;
 }
 
+void menu_set(menu *m , int select)
+{
+    if ((m == NULL) || (select <= 0)) { return; }
+    --select;
+    int y = select / m->xMax;
+    if (y < m->yMax)
+    {
+        m->curX = select % m->xMax;
+        m->curY = y;
+    }
+}
 
 struct ida_image * menu_img(menu * m)
 {

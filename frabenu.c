@@ -11,6 +11,7 @@
 #include <signal.h>
 #include <string.h>
 #include <unistd.h>
+#include <limits.h>
 
 #include "debug.h"
 #include "input.h"
@@ -29,6 +30,7 @@ gfxstate                   *gfx;
 menu_scroll_mode scrollMode = menu_scroll_mode_1;
 char *fileName = NULL;
 uint8_t xMax = 1, yMax = 1;
+int defaultSelection = -1;
 
 
 static jmp_buf fb_fatal_cleanup;
@@ -94,7 +96,7 @@ int parseArgs(int argc, char **argv)
 {
     int opt;
 
-    while ((opt = getopt(argc, argv, "hs:")) != -1)
+    while ((opt = getopt(argc, argv, "hs:d:")) != -1)
     {
         switch (opt)
         {
@@ -104,6 +106,25 @@ int parseArgs(int argc, char **argv)
                 if ((optarg[0] >= '1') && (optarg[0] <= '4') && (optarg[1] == 0))
                 {
                     scrollMode = optarg[0] - '1';
+                }
+                else
+                {
+                    return -1;
+                }
+            }
+            else
+            {
+                return -1;
+            }
+            break;
+        case 'd':
+            if (optarg != NULL)
+            {
+                char * next;
+                long val = strtol(optarg, &next, 10);
+                if ((optarg != next) && (val > 0) && (val <= INT_MAX))
+                {
+                    defaultSelection = val;
                 }
                 else
                 {
@@ -165,6 +186,7 @@ int main(int argc, char **argv)
 
     m = menu_creat(xMax, yMax, fileName);
     if (m == NULL) { return -1; }
+    menu_set(m, defaultSelection);
 
     input_init();
     gfx = fb_init(NULL, videoMode, vt);

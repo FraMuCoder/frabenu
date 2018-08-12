@@ -52,6 +52,13 @@ menu *menu_destroy(menu * m);
 int menu_get(menu * m);
 
 /**
+ * @brief Set menu selection.
+ * @param m
+ * @param select    new seletion 1..(xMax*yMax-1)
+ */
+void menu_set(menu *m , int select);
+
+/**
  * @brief Get currenly marked image.
  * @param m
  * @return      Image or NULL on error.

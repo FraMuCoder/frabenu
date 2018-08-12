@@ -6,11 +6,14 @@
 # shorter reaction for ESC
 export ESCDELAY=100
 
+# select default
+selection=1
+
 # use this if you want to restart menu after any selection but abort ([ESC] or [Q])
 #while [ 1 ]
 #   do
 
-   ./frabenu -s2 3x2 menu_%x_%y.png
+   ./frabenu -s2 -d$selection 3x2 menu_%x_%y.png
 
    selection=$?
 
